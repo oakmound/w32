@@ -4,11 +4,6 @@
 
 package w32
 
-// #include <stdlib.h>
-import (
-	"C"
-)
-
 import (
 	"fmt"
 	// "github.com/davecgh/go-spew/spew"
@@ -29,65 +24,6 @@ var (
 	procRtlCreateUnicodeStringFromAsciiz = modntdll.NewProc("RtlCreateUnicodeStringFromAsciiz")
 )
 
-func RtlCreateUnicodeStringFromAsciiz(s string) (us UNICODE_STRING, e error) {
-
-	cs := C.CString(s)
-	defer C.free(unsafe.Pointer(cs))
-
-	ret, _, lastErr := procRtlCreateUnicodeStringFromAsciiz.Call(
-		uintptr(unsafe.Pointer(&us)),
-		uintptr(unsafe.Pointer(cs)),
-	)
-
-	if ret != 1 { // ret is a BOOL ( I think )
-		e = lastErr
-	}
-
-	return
-}
-
-func newUnicodeString(s string) (us UNICODE_STRING, e error) {
-	// TODO probably not the most efficient way to do this, but I couldn't
-	// work out how to manually initialize the UNICODE_STRING struct in a way
-	// that the ALPC subsystem liked.
-	us, e = RtlCreateUnicodeStringFromAsciiz(s)
-	return
-}
-
-// (this is a macro)
-// VOID InitializeObjectAttributes(
-//   [out]           POBJECT_ATTRIBUTES InitializedAttributes,
-//   [in]            PUNICODE_STRING ObjectName,
-//   [in]            ULONG Attributes,
-//   [in]            HANDLE RootDirectory,
-//   [in, optional]  PSECURITY_DESCRIPTOR SecurityDescriptor
-// )
-func InitializeObjectAttributes(
-	name string,
-	attributes uint32,
-	rootDir HANDLE,
-	pSecurityDescriptor *SECURITY_DESCRIPTOR,
-) (oa OBJECT_ATTRIBUTES, e error) {
-
-	oa = OBJECT_ATTRIBUTES{
-		RootDirectory:      rootDir,
-		Attributes:         attributes,
-		SecurityDescriptor: pSecurityDescriptor,
-	}
-	oa.Length = uint32(unsafe.Sizeof(oa))
-
-	if len(name) > 0 {
-		us, err := newUnicodeString(name)
-		if err != nil {
-			e = err
-			return
-		}
-		oa.ObjectName = &us
-	}
-
-	return
-}
-
 // NTSTATUS
 // NtAlpcCreatePort(
 //   __out PHANDLE PortHandle,
@@ -106,58 +42,6 @@ func NtAlpcCreatePort(pObjectAttributes *OBJECT_ATTRIBUTES, pPortAttributes *ALP
 		return hPort, fmt.Errorf("0x%x", ret)
 	}
 
-	return
-}
-
-// NTSTATUS
-// NtAlpcConnectPort(
-//     __out PHANDLE PortHandle,
-//     __in PUNICODE_STRING PortName,
-//     __in POBJECT_ATTRIBUTES ObjectAttributes,
-//     __in_opt PALPC_PORT_ATTRIBUTES PortAttributes,
-//     __in ULONG Flags,
-//     __in_opt PSID RequiredServerSid,
-//     __inout PPORT_MESSAGE ConnectionMessage,
-//     __inout_opt PULONG BufferLength,
-//     __inout_opt PALPC_MESSAGE_ATTRIBUTES OutMessageAttributes,
-//     __inout_opt PALPC_MESSAGE_ATTRIBUTES InMessageAttributes,
-//     __in_opt PLARGE_INTEGER Timeout
-//     );
-func NtAlpcConnectPort(
-	destPort string,
-	pClientObjAttrs *OBJECT_ATTRIBUTES,
-	pClientAlpcPortAttrs *ALPC_PORT_ATTRIBUTES,
-	flags uint32,
-	pRequiredServerSid *SID,
-	pConnMsg *AlpcShortMessage,
-	pBufLen *uint32,
-	pOutMsgAttrs *ALPC_MESSAGE_ATTRIBUTES,
-	pInMsgAttrs *ALPC_MESSAGE_ATTRIBUTES,
-	timeout *int64,
-) (hPort HANDLE, e error) {
-
-	destPortU, e := newUnicodeString(destPort)
-	if e != nil {
-		return
-	}
-
-	ret, _, _ := procNtAlpcConnectPort.Call(
-		uintptr(unsafe.Pointer(&hPort)),
-		uintptr(unsafe.Pointer(&destPortU)),
-		uintptr(unsafe.Pointer(pClientObjAttrs)),
-		uintptr(unsafe.Pointer(pClientAlpcPortAttrs)),
-		uintptr(flags),
-		uintptr(unsafe.Pointer(pRequiredServerSid)),
-		uintptr(unsafe.Pointer(pConnMsg)),
-		uintptr(unsafe.Pointer(pBufLen)),
-		uintptr(unsafe.Pointer(pOutMsgAttrs)),
-		uintptr(unsafe.Pointer(pInMsgAttrs)),
-		uintptr(unsafe.Pointer(timeout)),
-	)
-
-	if ret != ERROR_SUCCESS {
-		e = fmt.Errorf("0x%x", ret)
-	}
 	return
 }
 

@@ -4,11 +4,6 @@
 
 package w32
 
-// #include <stdlib.h>
-import (
-	"C"
-)
-
 // Based on C code found here https://gist.github.com/juntalis/4366916
 // Original code license:
 /*
