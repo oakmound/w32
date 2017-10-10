@@ -5,29 +5,21 @@ w32 is a wrapper of windows apis for the Go Programming Language.
 
 It wraps win32 apis to "Go style" to make them easier to use.
 
+
+## About This Fork ##
+
+This is forked from [AllenDang/w32](https://github.com/AllenDang/w32).
+
+This fork is used internally by [oakmound/shiny](https://github.com/oakmound/shiny). 
+
+It removes a few functions from w32 that relied on a C dependency.
+
+
 Setup
 =====
 
-1. Make sure you have a working Go installation and build environment, 
-   see this go-nuts post for details:
-   http://groups.google.com/group/golang-nuts/msg/5c87630a84f4fd0c
-   
-   Updated versions of the Windows Go build are available here:
-   http://code.google.com/p/gomingw/downloads/list
-   
-2. Create a "gopath" directory if you do not have one yet and set the
-   GOPATH variable accordingly. For example:
-   mkdir -p go-externals/src
-   export GOPATH=${PWD}/go-externals
+1. Install Go
 
-3. go get github.com/AllenDang/w32
+2. go get -u github.com/oakmound/w32
 
-4. go install github.com/AllenDang/w32...
-
-Contribute
-==========
-
-Contributions in form of design, code, documentation, bug reporting or other
-ways you see fit are very welcome.
-
-Thank You!
+3. go install github.com/oakmound/w32
