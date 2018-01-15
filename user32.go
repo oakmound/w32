@@ -13,6 +13,7 @@ import (
 var (
 	moduser32 = syscall.NewLazyDLL("user32.dll")
 
+	procIsZoomed                      = moduser32.NewProc("IsZoomed")
 	procRegisterClassEx               = moduser32.NewProc("RegisterClassExW")
 	procLoadIcon                      = moduser32.NewProc("LoadIconW")
 	procLoadCursor                    = moduser32.NewProc("LoadCursorW")
@@ -121,6 +122,11 @@ var (
 	procSetTimer                      = moduser32.NewProc("SetTimer")
 	procKillTimer                     = moduser32.NewProc("KillTimer")
 )
+
+func IsZoomed(hwnd HWND) bool {
+	ret, _, _ := procIsZoomed.Call(uintptr(hwnd))
+	return ret != 0
+}
 
 func RegisterClassEx(wndClassEx *WNDCLASSEX) ATOM {
 	ret, _, _ := procRegisterClassEx.Call(uintptr(unsafe.Pointer(wndClassEx)))
@@ -406,13 +412,13 @@ func CallWindowProc(preWndProc uintptr, hwnd HWND, msg uint32, wParam, lParam ui
 	return ret
 }
 
-func SetWindowLong(hwnd HWND, index int, value uint32) uint32 {
+func SetWindowLong(hwnd HWND, index int, value int32) int32 {
 	ret, _, _ := procSetWindowLong.Call(
 		uintptr(hwnd),
 		uintptr(index),
 		uintptr(value))
 
-	return uint32(ret)
+	return int32(ret)
 }
 
 func SetWindowLongPtr(hwnd HWND, index int, value uintptr) uintptr {
@@ -732,7 +738,7 @@ func TranslateAccelerator(hwnd HWND, hAccTable HACCEL, lpMsg *MSG) bool {
 	return ret != 0
 }
 
-func SetWindowPos(hwnd, hWndInsertAfter HWND, x, y, cx, cy int, uFlags uint) bool {
+func SetWindowPos(hwnd, hWndInsertAfter HWND, x, y, cx, cy int32, uFlags uint) bool {
 	ret, _, _ := procSetWindowPos.Call(
 		uintptr(hwnd),
 		uintptr(hWndInsertAfter),

@@ -784,6 +784,15 @@ type MONITORINFO struct {
 	DwFlags   uint32
 }
 
+// NewMonitorInfo sets the cbSize of a monitor info, so it can be used for
+// GetMonitorInfo.
+func NewMonitorInfo() MONITORINFO {
+	mi := MONITORINFO{}
+	// two uint32s, two rects of four uint32s
+	mi.CbSize = 4 + 4 + 16 + 16
+	return mi
+}
+
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd145066.aspx
 type MONITORINFOEX struct {
 	MONITORINFO

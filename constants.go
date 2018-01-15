@@ -2231,6 +2231,12 @@ const (
 	MAPVK_VSC_TO_VK_EX = 3
 )
 
+// WM_SYSCOMMAND wParams
+const (
+	SC_MAXIMIZE = 0xF030
+	SC_RESTORE  = 0xF120
+)
+
 // ReadEventLog Flags
 const (
 	EVENTLOG_SEEK_READ       = 0x0002
