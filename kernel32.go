@@ -49,13 +49,97 @@ var (
 	procReadProcessMemory          = modkernel32.NewProc("ReadProcessMemory")
 	procQueryPerformanceCounter    = modkernel32.NewProc("QueryPerformanceCounter")
 	procQueryPerformanceFrequency  = modkernel32.NewProc("QueryPerformanceFrequency")
+	procCreateEvent                = modkernel32.NewProc("CreateEvent")
+	procFormatMessage              = modkernel32.NewProc("FormatMessage")
+	procCreateFile                 = modkernel32.NewProc("CreateFile")
 )
+
+const (
+	GENERIC_ALL     = 0x10000000
+	GENERIC_EXECUTE = 0x20000000
+	GENERIC_WRITE   = 0x40000000
+	GENERIC_READ    = 0x80000000
+
+	FILE_SHARE_DELETE = 0x00000004
+	FILE_SHARE_READ   = 0x00000001
+	FILE_SHARE_WRITE  = 0x00000002
+
+	CREATE_ALWAYS     = 2
+	CREATE_NEW        = 1
+	OPEN_ALWAYS       = 4
+	OPEN_EXISTING     = 3
+	TRUNCATE_EXISTING = 5
+
+	FILE_ATTRIBUTE_ARCHIVE   = 0x20
+	FILE_ATTRIBUTE_ENCRYPTED = 0x4000
+	FILE_ATTRIBUTE_HIDDEN    = 0x2
+	FILE_ATTRIBUTE_NORMAL    = 0x80
+	FILE_ATTRIBUTE_OFFLINE   = 0x1000
+	FILE_ATTRIBUTE_READONLY  = 0x1
+	FILE_ATTRIBUTE_SYSTEM    = 0x4
+	FILE_ATTRIBUTE_TEMPORARY = 0x100
+
+	FILE_FLAG_BACKUP_SEMANTICS   = 0x02000000
+	FILE_FLAG_DELETE_ON_CLOSE    = 0x04000000
+	FILE_FLAG_NO_BUFFERING       = 0x20000000
+	FILE_FLAG_OPEN_NO_RECALL     = 0x00100000
+	FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
+	FILE_FLAG_OVERLAPPED         = 0x40000000
+	FILE_FLAG_POSIX_SEMANTICS    = 0x0100000
+	FILE_FLAG_RANDOM_ACCESS      = 0x10000000
+	FILE_FLAG_SESSION_AWARE      = 0x00800000
+	FILE_FLAG_SEQUENTIAL_SCAN    = 0x08000000
+	FILE_FLAG_WRITE_THROUGH      = 0x80000000
+)
+
+func CreateFile(filename string, desiredAccess, shareMode uint32, security *SECURITY_ATTRIBUTES, creationDisposition, flags uint32, templateFile HANDLE) HANDLE {
+	var fn uintptr
+	if filename != "" {
+		fn = uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(filename)))
+	}
+	ret, _, _ := procCreateFile.Call(fn, uintptr(desiredAccess), uintptr(shareMode), uintptr(unsafe.Pointer(security)), uintptr(creationDisposition), uintptr(flags), uintptr(templateFile))
+	return HANDLE(ret)
+}
+
+const (
+	FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100
+	FORMAT_MESSAGE_ARGUMENT_ARRAY  = 0x00002000
+	FORMAT_MESSAGE_FROM_HMODULE    = 0x00000800
+	FORMAT_MESSAGE_FROM_STRING     = 0x00000400
+	FORMAT_MESSAGE_FROM_SYSTEM     = 0x00001000
+	FORMAT_MESSAGE_IGNORE_INSERTS  = 0x00000200
+	FORMAT_MESSAGE_MAX_WIDTH_MASK  = 0x000000FF
+)
+
+func FormatMessage(flags uint32, source uintptr, messageId, languageId uint32, buffer string, size uint32) int {
+	var bf uintptr
+	if buffer != "" {
+		bf = uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(buffer)))
+	}
+	ret, _, _ := procFormatMessage.Call(uintptr(flags), source, uintptr(messageId), uintptr(languageId), bf, uintptr(size), 0)
+	return int(ret)
+}
+
+func CreateEvent(attributes *SECURITY_ATTRIBUTES, manualReset, initialState bool, name string) HANDLE {
+	var mr uintptr
+	if manualReset {
+		mr = 1
+	}
+	var is uintptr
+	if initialState {
+		is = 1
+	}
+	var nm uintptr
+	if name != "" {
+		nm = uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(name)))
+	}
+	ret, _, _ := procCreateEvent.Call(uintptr(unsafe.Pointer(attributes)), mr, is, nm)
+	return HANDLE(ret)
+}
 
 func GetModuleHandle(modulename string) HINSTANCE {
 	var mn uintptr
-	if modulename == "" {
-		mn = 0
-	} else {
+	if modulename != "" {
 		mn = uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(modulename)))
 	}
 	ret, _, _ := procGetModuleHandle.Call(mn)
