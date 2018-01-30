@@ -1,6 +1,7 @@
 package w32
 
 import (
+	"reflect"
 	"syscall"
 	"unsafe"
 
@@ -28,14 +29,6 @@ type SP_DEVICE_INTERFACE_DETAIL_DATA struct {
 	DevicePath string
 }
 
-const (
-	DIGCF_DEFAULT         = 0x00000001
-	DIGCF_PRESENT         = 0x00000002
-	DIGCF_ALLCLASSES      = 0x00000004
-	DIGCF_PROFILE         = 0x00000008
-	DIGCF_DEVICEINTERFACE = 0x00000010
-)
-
 type SPDeviceInformationData struct {
 	SP_DEVINFO_DATA
 	devInfo HDEVINFO
@@ -52,16 +45,13 @@ func SetupDiClassGuidsFromNameEx(className string, machineName string) ([]GUID, 
 }
 
 // SetupDiEnumDeviceInfo returns a SP_DEVINFO_DATA structure that specifies a device information element in a device information set.
-func EnumDeviceInfo(di HDEVINFO, memberIndex uint32) (*SPDeviceInformationData, error) {
-	did := SP_DEVINFO_DATA{}
+func SetupDiEnumDeviceInfo(di HDEVINFO, memberIndex uint32) (*SP_DEVINFO_DATA, error) {
+	did := new(SP_DEVINFO_DATA)
 
 	did.CbSize = uint32(unsafe.Sizeof(did))
 
-	err := setupDiEnumDeviceInfo(HANDLE(di), memberIndex, &did)
-	return &SPDeviceInformationData{
-		SP_DEVINFO_DATA: did,
-		devInfo:         di,
-	}, err
+	err := setupDiEnumDeviceInfo(HANDLE(di), memberIndex, did)
+	return did, err
 }
 
 // InstanceID retrieves the device instance ID that is associated with a device information element
@@ -93,13 +83,28 @@ func SetupDiGetClassDevsEx(ClassGuid GUID, Enumerator string, hwndParent uintptr
 var (
 	modsetupapi = syscall.NewLazyDLL("setupapi.dll")
 
-	procSetupDiClassGuidsFromNameExW    = modsetupapi.NewProc("SetupDiClassGuidsFromNameExW")
-	procSetupDiGetClassDevsExW          = modsetupapi.NewProc("SetupDiGetClassDevsExW")
-	procSetupDiEnumDeviceInfo           = modsetupapi.NewProc("SetupDiEnumDeviceInfo")
-	procSetupDiEnumDeviceInterfaces     = modsetupapi.NewProc("SetupDiEnumDeviceInterfaces")
-	procSetupDiGetDeviceInterfaceDetail = modsetupapi.NewProc("SetupDiGetDeviceInterfaceDetail ")
-	procSetupDiGetDeviceInstanceIdW     = modsetupapi.NewProc("SetupDiGetDeviceInstanceIdW")
+	procSetupDiClassGuidsFromNameExW     = modsetupapi.NewProc("SetupDiClassGuidsFromNameExW")
+	procSetupDiGetClassDevsExW           = modsetupapi.NewProc("SetupDiGetClassDevsExW")
+	procSetupDiEnumDeviceInfo            = modsetupapi.NewProc("SetupDiEnumDeviceInfo")
+	procSetupDiEnumDeviceInterfaces      = modsetupapi.NewProc("SetupDiEnumDeviceInterfaces")
+	procSetupDiGetDeviceInterfaceDetail  = modsetupapi.NewProc("SetupDiGetDeviceInterfaceDetail")
+	procSetupDiGetDeviceInstanceIdW      = modsetupapi.NewProc("SetupDiGetDeviceInstanceIdW")
+	procSetupDiGetDeviceRegistryProperty = modsetupapi.NewProc("SetupDiGetDeviceRegistryProperty")
 )
+
+func SetupDiGetDeviceRegistryProperty(DeviceInfoSet HDEVINFO, DeviceInfoData *SP_DEVINFO_DATA, Property uint32, PropertyRegDataType *uint32, PropertyBuffer []byte, PropertyBufferSize uint32, RequiredSize *uint32) bool {
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&PropertyBuffer))
+	ret, _, _ := procSetupDiGetDeviceRegistryProperty.Call(
+		uintptr(DeviceInfoSet),
+		uintptr(unsafe.Pointer(DeviceInfoData)),
+		uintptr(Property),
+		uintptr(unsafe.Pointer(PropertyRegDataType)),
+		uintptr(unsafe.Pointer(hdr.Data)),
+		uintptr(PropertyBufferSize),
+		uintptr(unsafe.Pointer(RequiredSize)),
+	)
+	return ret != 0
+}
 
 func setupDiClassGuidsFromNameEx(ClassName string, guid *GUID, size uint32, required_size *uint32, machineName string, reserved uint32) (err error) {
 	var _p0 *uint16
