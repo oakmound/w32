@@ -5,6 +5,7 @@
 package w32
 
 import (
+	"syscall"
 	"unsafe"
 )
 
@@ -898,3 +899,32 @@ type HOOKPROC func(int, WPARAM, LPARAM) LRESULT
 
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms633498(v=vs.85).aspx
 type WNDENUMPROC func(HWND, LPARAM) LRESULT
+
+// https://docs.microsoft.com/en-us/windows/desktop/api/wingdi/ns-wingdi-tagxform
+type XFORM struct {
+	EM11 float32
+	EM12 float32
+	EM21 float32
+	EM22 float32
+	EDx  float32
+	EDy  float32
+}
+
+// https://docs.microsoft.com/en-us/windows/desktop/api/wingdi/ns-wingdi-_blendfunction
+type BLENDFUNCTION struct {
+	BlendOp             byte
+	BlendFlags          byte
+	SourceConstantAlpha byte
+	AlphaFormat         byte
+}
+
+// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/ns-winuser-windowpos
+type WINDOWPOS struct {
+	HWNDInsertAfter syscall.Handle
+	HWND            syscall.Handle
+	X               int32
+	Y               int32
+	Cx              int32
+	Cy              int32
+	Flags           uint32
+}

@@ -62,7 +62,56 @@ var (
 	procGetPixelFormat            = modgdi32.NewProc("GetPixelFormat")
 	procSetPixelFormat            = modgdi32.NewProc("SetPixelFormat")
 	procSwapBuffers               = modgdi32.NewProc("SwapBuffers")
+	procSetWorldTransform         = modgdi32.NewProc("SetWorldTransform")
+	procSetGraphicsMode           = modgdi32.NewProc("SetGraphicsMode")
+	procModifyWorldTransform      = modgdi32.NewProc("ModifyWorldTransform")
+	procCreateSolidBrush          = modgdi32.NewProc("CreateSolidBrush")
 )
+
+func CreateSolidBrush(color COLORREF) (brush HBRUSH, err error) {
+	r0, _, e1 := syscall.Syscall(procCreateSolidBrush.Addr(), 1, uintptr(color), 0, 0)
+	brush = HBRUSH(r0)
+	if brush == 0 {
+		if e1 != 0 {
+			err = error(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func ModifyWorldTransform(dc HDC, x *XFORM, mode uint32) (err error) {
+	r1, _, e1 := syscall.Syscall(procModifyWorldTransform.Addr(), 3, uintptr(dc), uintptr(unsafe.Pointer(x)), uintptr(mode))
+	if r1 == 0 {
+		if e1 != 0 {
+			err = error(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func SetGraphicsMode(hdc HDC, imode int32) (int32, error) {
+	ret, _, err := procSetGraphicsMode.Call(
+		uintptr(hdc),
+		uintptr(imode))
+	if ret == 0 {
+		return 0, err
+	}
+	return int32(ret), nil
+}
+
+func SetWorldTransform(hdc HDC, lpxf *XFORM) error {
+	ret, _, err := procSetWorldTransform.Call(
+		uintptr(hdc),
+		uintptr(unsafe.Pointer(lpxf)))
+	if ret == 0 {
+		return err
+	}
+	return nil
+}
 
 func GetDeviceCaps(hdc HDC, index int) int {
 	ret, _, _ := procGetDeviceCaps.Call(
@@ -80,11 +129,13 @@ func GetCurrentObject(hdc HDC, uObjectType uint32) HGDIOBJ {
 	return HGDIOBJ(ret)
 }
 
-func DeleteObject(hObject HGDIOBJ) bool {
-	ret, _, _ := procDeleteObject.Call(
+func DeleteObject(hObject HGDIOBJ) error {
+	ret, _, err := procDeleteObject.Call(
 		uintptr(hObject))
-
-	return ret != 0
+	if ret == 0 {
+		return err
+	}
+	return nil
 }
 
 func CreateFontIndirect(logFont *LOGFONT) HFONT {
@@ -154,15 +205,15 @@ func CreateBrushIndirect(lplb *LOGBRUSH) HBRUSH {
 	return HBRUSH(ret)
 }
 
-func CreateCompatibleDC(hdc HDC) HDC {
-	ret, _, _ := procCreateCompatibleDC.Call(
+func CreateCompatibleDC(hdc HDC) (HDC, error) {
+	ret, _, err := procCreateCompatibleDC.Call(
 		uintptr(hdc))
 
 	if ret == 0 {
-		panic("Create compatible DC failed")
+		return 0, err
 	}
 
-	return HDC(ret)
+	return HDC(ret), nil
 }
 
 func CreateDC(lpszDriver, lpszDevice, lpszOutput *uint16, lpInitData *DEVMODE) HDC {
@@ -175,25 +226,31 @@ func CreateDC(lpszDriver, lpszDevice, lpszOutput *uint16, lpInitData *DEVMODE) H
 	return HDC(ret)
 }
 
-func CreateCompatibleBitmap(hdc HDC, width, height uint) HBITMAP {
-	ret, _, _ := procCreateCompatibleBitmap.Call(
+func CreateCompatibleBitmap(hdc HDC, width, height int32) (HBITMAP, error) {
+	ret, _, err := procCreateCompatibleBitmap.Call(
 		uintptr(hdc),
 		uintptr(width),
 		uintptr(height))
+	if ret == 0 {
+		return 0, err
+	}
 
-	return HBITMAP(ret)
+	return HBITMAP(ret), nil
 }
 
-func CreateDIBSection(hdc HDC, pbmi *BITMAPINFO, iUsage uint, ppvBits *unsafe.Pointer, hSection HANDLE, dwOffset uint) HBITMAP {
-	ret, _, _ := procCreateDIBSection.Call(
+func CreateDIBSection(hdc HDC, pbmi *BITMAPINFO, iUsage uint, ppvBits *unsafe.Pointer, hSection HANDLE, dwOffset uint) (HBITMAP, error) {
+	ret, _, err := procCreateDIBSection.Call(
 		uintptr(hdc),
 		uintptr(unsafe.Pointer(pbmi)),
 		uintptr(iUsage),
 		uintptr(unsafe.Pointer(ppvBits)),
 		uintptr(hSection),
 		uintptr(dwOffset))
+	if ret == 0 {
+		return 0, err
+	}
 
-	return HBITMAP(ret)
+	return HBITMAP(ret), nil
 }
 
 func CreateEnhMetaFile(hdcRef HDC, lpFilename *uint16, lpRect *RECT, lpDescription *uint16) HDC {
@@ -216,11 +273,13 @@ func CreateIC(lpszDriver, lpszDevice, lpszOutput *uint16, lpdvmInit *DEVMODE) HD
 	return HDC(ret)
 }
 
-func DeleteDC(hdc HDC) bool {
-	ret, _, _ := procDeleteDC.Call(
+func DeleteDC(hdc HDC) error {
+	ret, _, err := procDeleteDC.Call(
 		uintptr(hdc))
-
-	return ret != 0
+	if ret == 0 {
+		return err
+	}
+	return nil
 }
 
 func DeleteEnhMetaFile(hemf HENHMETAFILE) bool {
@@ -376,28 +435,28 @@ func ResetDC(hdc HDC, lpInitData *DEVMODE) HDC {
 	return HDC(ret)
 }
 
-func SelectObject(hdc HDC, hgdiobj HGDIOBJ) HGDIOBJ {
-	ret, _, _ := procSelectObject.Call(
+func SelectObject(hdc HDC, hgdiobj HGDIOBJ) (HGDIOBJ, error) {
+	ret, _, err := procSelectObject.Call(
 		uintptr(hdc),
 		uintptr(hgdiobj))
 
 	if ret == 0 {
-		panic("SelectObject failed")
+		return 0, err
 	}
 
-	return HGDIOBJ(ret)
+	return HGDIOBJ(ret), nil
 }
 
-func SetBkMode(hdc HDC, iBkMode int) int {
-	ret, _, _ := procSetBkMode.Call(
+func SetBkMode(hdc HDC, iBkMode int) (int, error) {
+	ret, _, err := procSetBkMode.Call(
 		uintptr(hdc),
 		uintptr(iBkMode))
 
 	if ret == 0 {
-		panic("SetBkMode failed")
+		return 0, err
 	}
 
-	return int(ret)
+	return int(ret), nil
 }
 
 func SetBrushOrgEx(hdc HDC, nXOrg, nYOrg int, lppt *POINT) bool {
@@ -457,8 +516,8 @@ func StartPage(hdc HDC) int {
 	return int(ret)
 }
 
-func StretchBlt(hdcDest HDC, nXOriginDest, nYOriginDest, nWidthDest, nHeightDest int, hdcSrc HDC, nXOriginSrc, nYOriginSrc, nWidthSrc, nHeightSrc int, dwRop uint) {
-	ret, _, _ := procStretchBlt.Call(
+func StretchBlt(hdcDest HDC, nXOriginDest, nYOriginDest, nWidthDest, nHeightDest int32, hdcSrc HDC, nXOriginSrc, nYOriginSrc, nWidthSrc, nHeightSrc int32, dwRop uint) error {
+	ret, _, err := procStretchBlt.Call(
 		uintptr(hdcDest),
 		uintptr(nXOriginDest),
 		uintptr(nYOriginDest),
@@ -472,8 +531,9 @@ func StretchBlt(hdcDest HDC, nXOriginDest, nYOriginDest, nWidthDest, nHeightDest
 		uintptr(dwRop))
 
 	if ret == 0 {
-		panic("StretchBlt failed")
+		return err
 	}
+	return nil
 }
 
 func SetDIBitsToDevice(hdc HDC, xDest, yDest, dwWidth, dwHeight, xSrc, ySrc int, uStartScan, cScanLines uint, lpvBits []byte, lpbmi *BITMAPINFO, fuColorUse uint) int {
