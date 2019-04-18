@@ -27,7 +27,7 @@ func InitXInput() error {
 	names := []string{"xinput1_4.dll", "xinput1_3.dll", "xinput9_1_0.dll", "xinputuap.dll"}
 	for _, n := range names {
 		dll, err := tryLoad(n)
-		if err != nil {
+		if err == nil {
 			xinput = dll
 			break
 		}
