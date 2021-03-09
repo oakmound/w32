@@ -5,6 +5,7 @@
 package w32
 
 import (
+	"crypto/rand"
 	"syscall"
 	"unsafe"
 )
@@ -319,6 +320,14 @@ type GUID struct {
 	Data2 uint16
 	Data3 uint16
 	Data4 [8]byte
+}
+
+func MakeGUID() GUID {
+	// Implementation from hallazzang/go-windows-programming. Would have
+	// reimplemented but it's so simple that its hard to do so.
+	var buf [16]byte
+	rand.Read(buf[:])
+	return *(*GUID)(unsafe.Pointer(&buf[0]))
 }
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/ms221627.aspx

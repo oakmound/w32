@@ -22,6 +22,7 @@ var (
 	procDragFinish          = modshell32.NewProc("DragFinish")
 	procShellExecute        = modshell32.NewProc("ShellExecuteW")
 	procExtractIcon         = modshell32.NewProc("ExtractIconW")
+	procShell_NotifyIcon    = modshell32.NewProc("Shell_NotifyIconA")
 )
 
 func SHBrowseForFolder(bi *BROWSEINFO) uintptr {
@@ -150,4 +151,63 @@ func ExtractIcon(lpszExeFileName string, nIconIndex int) HICON {
 		uintptr(nIconIndex))
 
 	return HICON(ret)
+}
+
+type Shell_NotifyAction uint32
+
+const (
+	NIM_ADD        Shell_NotifyAction = 0x0
+	NIM_MODIFY     Shell_NotifyAction = 0x1
+	NIM_DELETE     Shell_NotifyAction = 0x2
+	NIM_SETFOCUS   Shell_NotifyAction = 0x3
+	NIM_SETVERSION Shell_NotifyAction = 0x4
+)
+
+const (
+	NIF_MESSAGE  = 0x00000001
+	NIF_ICON     = 0x00000002
+	NIF_TIP      = 0x00000004
+	NIF_STATE    = 0x00000008
+	NIF_INFO     = 0x00000010
+	NIF_GUID     = 0x00000020
+	NIF_REALTIME = 0x00000040
+	NIF_SHOWTIP  = 0x00000080
+)
+
+const (
+	NIIF_NONE               = 0x00000000
+	NIIF_INFO               = 0x00000001
+	NIIF_WARNING            = 0x00000002
+	NIIF_ERROR              = 0x00000003
+	NIIF_USER               = 0x00000004
+	NIIF_NOSOUND            = 0x00000010
+	NIIF_LARGE_ICON         = 0x00000020
+	NIIF_RESPECT_QUIET_TIME = 0x00000080
+	NIIF_ICON_MASK          = 0x0000000F
+)
+
+type NOTIFYICONDATA struct {
+	CbSize           uint32
+	HWnd             HWND
+	UID              uint32
+	UFlags           uint32
+	UCallbackMessage uint32
+	HIcon            uintptr
+	SzTip            [128]uint16
+	DwState          uint32
+	DwStateMask      uint32
+	SzInfo           [256]uint16
+	UVersion         uint32
+	SzInfoTitle      [64]uint16
+	DwInfoFlags      uint32
+	GUIDItem         GUID
+	HBalloonIcon     uintptr
+}
+
+func Shell_NotifyIcon(action Shell_NotifyAction, data *NOTIFYICONDATA) bool {
+	r1, _, _ := procShell_NotifyIcon.Call(
+		uintptr(action),
+		uintptr(unsafe.Pointer(data)),
+	)
+	return r1 == 1
 }

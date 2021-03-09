@@ -15,6 +15,7 @@ var (
 	procIsZoomed                      = moduser32.NewProc("IsZoomed")
 	procRegisterClassEx               = moduser32.NewProc("RegisterClassExW")
 	procLoadIcon                      = moduser32.NewProc("LoadIconW")
+	procLoadImageW                    = moduser32.NewProc("LoadImageW")
 	procLoadCursor                    = moduser32.NewProc("LoadCursorW")
 	procShowWindow                    = moduser32.NewProc("ShowWindow")
 	procUpdateWindow                  = moduser32.NewProc("UpdateWindow")
@@ -115,6 +116,7 @@ var (
 	procUnhookWindowsHookEx           = moduser32.NewProc("UnhookWindowsHookEx")
 	procCallNextHookEx                = moduser32.NewProc("CallNextHookEx")
 	procSetForegroundWindow           = moduser32.NewProc("SetForegroundWindow")
+	procGetForegroundWindow           = moduser32.NewProc("GetForegroundWindow")
 	procFindWindowW                   = moduser32.NewProc("FindWindowW")
 	procFindWindowExW                 = moduser32.NewProc("FindWindowExW")
 	procGetClassName                  = moduser32.NewProc("GetClassNameW")
@@ -191,6 +193,12 @@ func SetForegroundWindow(hwnd HWND) bool {
 		uintptr(hwnd))
 
 	return ret != 0
+}
+
+func GetForegroundWindow() HWND {
+	ret, _, _ := procGetForegroundWindow.Call()
+
+	return HWND(ret)
 }
 
 func ShowWindow(hwnd HWND, cmdshow int) bool {
@@ -1094,4 +1102,25 @@ func ToUnicodeEx(wVirtKey uint32, wScanCode uint32, lpKeyState *byte, pwszBuff *
 	r0, _, _ := syscall.Syscall9(procToUnicodeEx.Addr(), 7, uintptr(wVirtKey), uintptr(wScanCode), uintptr(unsafe.Pointer(lpKeyState)), uintptr(unsafe.Pointer(pwszBuff)), uintptr(cchBuff), uintptr(wFlags), uintptr(dwhkl), 0, 0)
 	ret = int32(r0)
 	return
+}
+
+const (
+	IMAGE_BITMAP = 0
+	IMAGE_ICON   = 1
+	IMAGE_CURSOR = 2
+
+	LR_DEFAULTCOLOR     = 0x00000000
+	LR_MONOCHROME       = 0x00000001
+	LR_LOADFROMFILE     = 0x00000010
+	LR_LOADTRANSPARENT  = 0x00000020
+	LR_DEFAULTSIZE      = 0x00000040
+	LR_VGACOLOR         = 0x00000080
+	LR_LOADMAP3DCOLORS  = 0x00001000
+	LR_CREATEDIBSECTION = 0x00002000
+	LR_SHARED           = 0x00008000
+)
+
+func LoadImage(hInst uintptr, name *uint16, type_ uint32, cx, cy int32, fuLoad uint32) uintptr {
+	r1, _, _ := procLoadImageW.Call(hInst, uintptr(unsafe.Pointer(name)), uintptr(type_), uintptr(cx), uintptr(cy), uintptr(fuLoad))
+	return r1
 }
