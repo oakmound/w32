@@ -6,7 +6,6 @@ package w32
 
 import (
 	"fmt"
-	// "github.com/davecgh/go-spew/spew"
 	"syscall"
 	"unsafe"
 )
